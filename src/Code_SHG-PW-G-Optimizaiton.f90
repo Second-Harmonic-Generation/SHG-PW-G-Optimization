@@ -6,11 +6,14 @@
 !            ************************************************************************************
 !            *                                                                                  *
 !            * File name:                                                                       *
-!            *     Code_SHG-PW-G-Simulation.F90                                                 *
+!            *     Code_SHG-PW-G-Optimizaiton.f90                                               *
 !            *                                                                                  *
-!            * This Fortran code models pulsed wave Gaussian Second Harmonic Generation         *
-!            * using five coupled equations (Heat-equation & Phase-equation & Fields-equations) *
-!            * solved by Finite Difference Method.                                              *
+!            * This Fortran code provides an optimized computational framework for              *
+!            * investigating thermal effects in pulsed wave Gaussian Second Harmonic            *
+!            * Generation (SHG) using five coupled equations (Heat-equation & Phase-equation    *
+!            * & Fields-equations) solved by Finite Difference Method. The code is optimized    *
+!            * for memory efficiency (99% reduction) and computational speed (86% reduction)     *
+!            * through array size reduction, loop restructuring, and MPI parallel computing.     *
 !            *                                                                                  *
 !            ************************************************************************************
 

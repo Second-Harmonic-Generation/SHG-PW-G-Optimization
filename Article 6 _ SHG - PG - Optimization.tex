@@ -1,0 +1,340 @@
+\documentclass[review]{elsarticle}
+
+\usepackage{lineno,hyperref}
+\usepackage{multirow}
+\modulolinenumbers[5]
+% \journal{Journal of \LaTeX\ Templates}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Elsevier bibliography styles
+%%%%%%%%%%%%%%%%%%%%%%%
+%% To change the style, put a % in front of the second line of the current style and
+%% remove the % from the second line of the style you would like to use.
+%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Numbered
+%\bibliographystyle{model1-num-names}
+
+%% Numbered without titles
+%\bibliographystyle{model1a-num-names}
+
+%% Harvard
+%\bibliographystyle{model2-names.bst}\biboptions{authoryear}
+
+%% Vancouver numbered
+%\usepackage{numcompress}\bibliographystyle{model3-num-names}
+
+%% Vancouver name/year
+%\usepackage{numcompress}\bibliographystyle{model4-names}\biboptions{authoryear}
+
+%% APA style
+%\bibliographystyle{model5-names}\biboptions{authoryear}
+
+%% AMA style
+%\usepackage{numcompress}\bibliographystyle{model6-num-names}
+
+%% `Elsevier LaTeX' style
+\bibliographystyle{elsarticle-num}
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\begin{frontmatter}
+
+    \title{Algorithm optimization and parallel computing for heat-coupled pulsed second harmonic generation: reducing memory requirements and computational time}
+    % \tnotetext[mytitlenote]{Fully documented templates are available in the elsarticle package on \href{http://www.ctan.org/tex-archive/macros/latex/contrib/elsarticle}{CTAN}.}
+
+    %% Group authors per affiliation:
+    \author[1]{Mostafa M. Rezaee}
+
+    \author[2]{Mohammad Sabaeian\corref{*}}
+    \cortext[*]{Corresponding author}
+    \ead{sabaeian@scu.ac.ir}
+    \author[3]{Alireza Motazedian}
+    \author[4]{Fatemeh Sedaghat Jalil-Abadi}
+    \author[5]{Mohammad Ghadri}
+
+    \address[1]{Department of Data Science, Bowling Green State University, Bowling Green, OH, USA.}
+    \address[2]{Department of Physics, Shahid Chamran University of Ahvaz, Ahvaz, Khuzestan, Iran.}
+    \address[3]{Department of Physics, University of New Hampshire, Durham, NH, USA.}
+    \address[4]{Department of Energy Engineering and Physics, Amirkabir University of Technology, Tehran, Iran.}
+    \address[5]{MIAE Department, Concordia University, Montreal, QC, Canada.}
+
+    % \address{Radarweg 29, Amsterdam}
+    % \fntext[myfootnote]{Since 1880.}
+
+    %% or include affiliations in footnotes:
+    % \author[mymainaddress,mysecondaryaddress]{Elsevier Inc}
+    % \ead[url]{www.elsevier.com}
+
+    \begin{abstract}
+        To investigate the effects of heat in pulsed second-harmonic generation, five coupled differential equations—heat, phase, and field equations—must be solved simultaneously. We developed a \textsc{FORTRAN} code to perform this calculation. This problem inherently requires large arrays and loops with extremely high iteration counts, leading to prohibitive computational costs. Without optimization, the code requires approximately $231.51\,\mathrm{GB}$ of RAM and $38.33$ hours to complete a single run on a Core i7 personal computer. To investigate the effects of various parameters ($20$ energy values, $6$ spot sizes, $3$ pulse repetition frequencies, $16$ crystal lengths, and $2$ pulse durations), the code must be executed $11{,}520$ times, making the unoptimized approach impractical for standard computing resources.
+
+        We optimized the algorithm in three steps, achieving significant reductions in both RAM usage and execution time. First, the number of phase elements was reduced by a factor of $10$ million. Second, by separating the loops of the field equations from those of the heat and phase equations, the number of calculations decreased dramatically. Finally, parallelization with MPI was applied, producing an efficiently optimized code. The final version reduced RAM requirements by $99\%$ and execution time by $86\%$. For $50$ pulses and one iteration, the optimized code executes in $5.5$ hours on a personal computer with $2\,\mathrm{GB}$ of RAM. Task parallelism through MPI distributes iterations among independent cores, reducing the total execution time by a factor of eight on an eight-core personal computer. These optimizations make it feasible to perform large-scale simulations of heat-coupled pulsed SHG using standard computing resources.
+
+    \end{abstract}
+
+    \begin{keyword}
+        Algorithm optimization
+        \sep Parallel computing
+        \sep Second harmonic generation
+        \sep Thermal effects
+        \sep Computational efficiency
+    \end{keyword}
+\end{frontmatter}
+
+\linenumbers
+
+\section{Introduction}
+Green light lasers have extensive applications in material processing \cite{yang2024application, golden1992green_1}, biomedicine \cite{bernstein2023new, shao2025effectiveness}, ophthalmology \cite{wang2024laser, frennesson1995effects_3}, printing \cite{mobert1997green_4}, spectroscopy \cite{lu2000raman_5}, underwater communications \cite{dong2023research}, display technology \cite{bartsch2016laser, hitz2009green_7}, and pumping sources for solid-state lasers \cite{ji2023532}. Producing a highly efficient output with good beam quality remains a central challenge \cite{su2021321, dixneuf2021robust}. Potassium titanyl phosphate (KTiOPO$_4$, or KTP) is a well-known nonlinear crystal for converting Nd lasers emitting near $1\,\mu\mathrm{m}$ into green light via second harmonic generation (SHG). KTP exhibits a large angular acceptance angle and relatively high damage threshold \cite{mamrashev2018optical, padberg2022dc, zhou2023hydrothermal}. This positive biaxial crystal \cite{yao1984calculations_10} is particularly suitable for Type II doubling at $1064\,\mathrm{nm}$ \cite{bolt1993single_9}.
+
+In Q-switched pulsed lasers operating at high repetition rates, both the temperature and the thermally induced phase mismatch vary with time. As noted in Ref.~\cite{golden1992green_1}, the temperature distribution fluctuates over time while its average approaches a steady state. Higher repetition rates result in higher average temperatures with narrower temporal fluctuations.
+
+These thermal effects directly impact conversion efficiency and beam quality. Thermally induced phase mismatch and thermal lensing are the primary mechanisms responsible for reducing conversion efficiency and beam quality. The limitations to achieving higher efficiency have been discussed in detail \cite{corless2018exploring_11}, including the temporal and spatial variations of the fundamental and second-harmonic waves, temperature, and thermally induced phase mismatch. Eimerl \cite{eimerl1987high_12} demonstrated that temperature gradients cause thermal dephasing, which manifests as thermally induced phase mismatch of the waves.
+
+Two distinct thermal effects must be considered. The longitudinal temperature gradient leads to thermally induced phase mismatch \cite{kato2022influence}, while transverse temperature gradients cause thermal lensing. The longitudinal temperature gradient arises from energy exchange between the fundamental and second-harmonic waves and their simultaneous absorption, in addition to heat flow toward the crystal ends caused by convection and radiation cooling. Absorption typically dominates this process. The longitudinal temperature gradient is generally regarded as the primary limiting factor for conversion efficiency, whereas the transverse temperature gradient results mainly from radial heat flow. Thermal lensing cannot be treated analytically in the presence of a nonuniform transverse heat source unless approximations are introduced \cite{sabaeian2008bessel_13,nadgaran2010mathieu_14,wang2023scoring}. The most reliable approach is therefore to solve the wave equation with the temperature-dependent refractive index explicitly included \cite{sabaeian2009thermal_15,mousavi2013numerical_16}.
+
+The effects of heat in the SHG process have been confirmed experimentally \cite{wu2022circular}, and several studies have reported its detrimental impact on nonlinear crystals. Various models have been developed to investigate how heat influences SHG \cite{comin2018efficient}. Heat is generated through the optical absorption of both the fundamental and second-harmonic waves. This thermal load reduces the field amplitudes by inducing phase mismatch. To properly capture these mutual effects, a coupled model system is required. We previously presented such a coupled model system for continuous-wave SHG \cite{sabaeian2010investigation_17}.
+
+Corless et al.~\cite{corless2018exploring_11} developed a comprehensive time-dependent three-dimensional spatial model for the mutual interaction of Type-II pulsed second-harmonic generation and thermal effects. To describe the phenomenon, five coupled differential equations were introduced and solved simultaneously, with a \textsc{FORTRAN} code written to perform the calculation. This approach necessarily involves large arrays and loops with enormous iteration counts, presenting significant computational challenges.
+
+Such computational demands typically require high-performance computing machines with powerful CPUs and extensive RAM \cite{corless2018exploring_11}. To illustrate the source of this requirement, consider the use of arrays in the code: in our implementation, $230$ variables, including $10$ arrays, must be stored and updated throughout the computation. For example, representing the velocity vector of a moving body in three-dimensional space over multiple time steps requires a multi-dimensional array to record both spatial coordinates and time. Extending this analogy from a single moving body to the many particles of a nonlinear crystal, the memory requirement grows by several orders of magnitude. This explains the substantial RAM and execution time demands associated with running the code.
+
+Because of the nanometer-scale wavelength, achieving accurate results requires a very fine discretization along the $z$-direction—$12{,}000$ meshes in our case. The stability condition must be satisfied, since the heat equation contains both first- and second-order derivatives with respect to time and space, respectively. This coupling means that temporal and spatial step sizes are interdependent, and increasing the number of elements along $z$ forces the use of more time steps. To simultaneously satisfy accuracy and stability requirements, we divided the cylindrical KTP crystal into $120 \times 12{,}000$ meshes in the $r$- and $z$-coordinates, respectively, and used $2{,}532$ time steps for each pulse.
+
+This rapid growth in mesh and time-step numbers introduces unnecessary loops and calculations. The large number of time steps increases the computational load of the field equations, while the fine discretization along $z$ inflates the cost of solving the heat equation. These redundant calculations substantially increase both memory requirements and execution time.
+
+
+Most parallel computing methods cannot be applied to the code, since its data are not inherently distributable. Two forms of parallel computing are commonly used in high-performance computing: data parallelism and task parallelism. In a multiprocessor system executing a single set of instructions (SIMD), data parallelism is achieved when each processor performs the same operation on different portions of distributed data. In some cases, a single execution thread controls all operations on the distributed data, while in others, multiple threads control the operations but execute the same code.
+
+Task parallelism is achieved when each processor executes a different thread (or process) on the same or different data. The threads may execute identical or distinct code, and in the general case, they communicate with one another during execution. Such communication typically occurs by passing data from one thread to the next as part of a workflow. Data parallelism emphasizes the distribution of data rather than the computation itself \cite{pacheco2012introduction_18}. Consequently, we were able to apply only methods based on task parallelism.
+
+We performed our numerical calculations using a home-made \textsc{FORTRAN} code, executed under \textsc{LINUX} on a standard personal computer. By discretizing the cylindrical KTP crystal into $120 \times 12{,}000$ meshes for the $r$- and $z$-coordinates, respectively, and using $2{,}532$ time steps for each pulse, we achieved the desired level of accuracy. To ensure the reliability of the results, the uncoupled wave and heat equations were solved separately and compared with available analytical solutions \cite{corless2018exploring_11}. Once this verification was completed, the coupled code was implemented.
+
+
+The unoptimized code required $231.51\,\mathrm{GB}$ of RAM and $38.33$ hours of execution time on a Core i7 personal computer \cite{corless2018exploring_11}. Such massive memory demand made it impossible to run the code on a standard computing machine. Even with a supercomputer capable of providing the required RAM, execution would still be excessively time-consuming and inefficient. We therefore optimized the code and achieved significant improvements without any loss of accuracy.
+
+The optimization of the code was carried out in three steps. First, the number of phase elements—and consequently the required RAM—was reduced by a factor of $10$ million. Second, by separating the loops of the field equations from those of the heat and phase equations, the number of calculations and loop iterations decreased dramatically from $3{,}646{,}080{,}000$ to $116{,}640{,}000$ for field equations and $723{,}168{,}000$ for heat and phase equations, resulting in significant reductions in both RAM usage and execution time. Finally, by implementing MPI, the calculations were divided into segments and distributed among different cores, which improved execution time depending on the number of cores employed.
+
+In this paper, we present an efficient numerical framework to investigate the thermal effects in pulsed Type-II SHG in KTP. Our approach solves the five coupled field, phase, and heat equations using a home-made \textsc{FORTRAN} code executed under \textsc{LINUX}, with accuracy validated against analytical solutions of the uncoupled equations. To overcome the prohibitive memory and execution time demands of earlier models \cite{corless2018exploring_11}, we introduce algorithmic optimizations and parallelization strategies based on MPI. These advances make it feasible to perform large-scale simulations of heat-coupled pulsed SHG on standard personal computers, providing a practical framework for analyzing efficiency-limiting thermal processes and extending the study to other nonlinear crystals by adjusting material parameters.
+
+
+
+\section{Numerical procedure}
+
+To investigate the effects of heat on pulsed second harmonic generation, the set of Equations~(\ref{eq:1})--(\ref{eq:5}) must be solved simultaneously \cite{corless2018exploring_11}. The equations differ inherently: Equations~(\ref{eq:1})--(\ref{eq:3}) are first order in time and $z$ and second order in transverse coordinate, while the heat equation is first order in time and second order in all spatial coordinates. The phase equation is first order in $z$.
+
+Solving the equations only captures the heating from a single pulse, whose effect is negligible in practice. We therefore solve the equation system repetitively and consider the heat accumulation of successive pulses. The procedure adopted to solve the system of coupled equations is as follows. For each step in $z$, the wave equations are solved in time for one pulse. Due to the boundary and initial conditions, we prioritize the $z$-direction. The field profiles from Equations~(\ref{eq:1})--(\ref{eq:3}) are then substituted into the heat equation as source terms, and the temperature distribution is calculated.
+
+Next, the changes in the refractive indices are calculated, and the thermal phase-mismatch equation is solved. These thermally affected refractive indices and the thermal phase mismatch are then inserted into the wave equations, and the iterative process is performed until a stable solution is reached. Because the pulse duration ($10^{-5}\,\mathrm{s}$) is much shorter than the heat diffusion time, our calculations show that subsequent iterations add nothing beyond the first solution.
+
+For the next pulse, the temperature distribution at the end of the first pulse is retained as the initial condition. The wave equations for the second pulse are solved by accounting for thermal phase mismatch and the temperature dependence of the refractive indices. The heat and phase equations are then solved, and the entire process is repeated. This procedure continues until the temperature reaches a steady state.
+
+\begin{eqnarray}
+    \label{eq:1}
+    \frac{n_{1}}{c} \frac{d \psi_{1}}{d t}+\frac{d \psi_{1}}{d z}-\frac{i c}{2 n_{1}\omega} \frac{1}{r} \frac{d \psi_{1}}{d r}-\frac{i c}{2 n_{1} \omega} \frac{d^{2} \psi_{1}}{d r^{2}}+\frac{\gamma_{1}}{2} \psi_{1}
+    \\
+    \nonumber
+    =\frac{i}{L}\left(\frac{1}{n_{1} n_{2} n_{3}}\right)^{\frac{1}{2}} \psi_{2}^{*} \psi_{3} e^{-i \Delta \delta}
+\end{eqnarray}
+
+\begin{eqnarray}
+    \label{eq:2}
+    \frac{n_{2}}{c} \frac{d \psi_{2}}{d t}+\frac{d \psi_{2}}{d z}-\frac{i c}{2 n_{2} \omega} \frac{1}{r} \frac{d \psi_{2}}{d r}-\frac{i c}{2 n_{2} \omega} \frac{d^{2} \psi_{2}}{d r^{2}}+\frac{\gamma_{2}}{2} \psi_{2}
+    \\
+    \nonumber
+    =\frac{i}{L}\left(\frac{1}{n_{1} n_{2} n_{3}}\right)^{\frac{1}{2}} \psi_{1}^{*} \psi_{3} e^{-i \Delta \delta}
+\end{eqnarray}
+
+\begin{eqnarray}
+    \label{eq:3}
+    \frac{n_{3}}{c} \frac{d \psi_{3}}{d t}+\frac{d \psi_{3}}{d z}-\frac{i c}{4 n_{3} \omega} \frac{1}{r} \frac{d \psi_{3}}{d r}-\frac{i c}{4 n_{3} \omega} \frac{d^{2} \psi_{3}}{d r^{2}}+\frac{\gamma_{3}}{2} \psi_{3}
+    \\
+    \nonumber
+    =\frac{i}{L}\left(\frac{1}{n_{1} n_{2} n_{3}}\right)^{\frac{1}{2}} \psi_{1} \psi_{2} e^{i \Delta \delta}
+\end{eqnarray}
+
+\begin{equation}
+    -\nabla \cdot (K(T) \nabla T)+\rho_0 \frac{\partial T}{\partial t}=\frac{P}{\pi \omega_{f}^{2}}\left[\gamma_{1} \psi_{1}^{2}+\gamma_{2} \psi_{2}^{2}+2 \gamma_{3} \psi_{3}^{2}\right]
+    \label{eq:4}
+\end{equation}
+
+\begin{equation}
+    \Delta \varphi(T)=\int_{0}^{z} \Delta k_{total}(T) \cdot d z^{\prime}
+    \label{eq:5}
+\end{equation}
+
+\section{Code optimization}
+\subsection{Reducing the size of arrays}
+The first step of optimization was performed by reducing the size of the arrays, which resulted in a more efficient code requiring significantly less RAM. The most convenient position to report the heat values is at point (1) in Fig.~\ref{fig:1}, after the loops have ended. Since heat is stored as a four-dimensional array, segmenting in both time and space must be performed with care. Excessively large segments lead to inaccurate results, whereas overly fine segmentation causes excessive RAM usage and slows down code execution.
+
+
+Heat is a function of $r$, $z$, $\theta$, and $t$, and the number of pulses must also be included. To control the stability coefficient, the crystal must be divided into a large number of meshes. For instance, consider a temperature array $T(n_p,\, n_t,\, n_r,\, n_\theta,\, n_z)$ with dimensions $(n_p=1000,\, n_t=20{,}000,\, n_r=100,\, n_\theta=100,\, n_z=100)$, where $n_p$ denotes the number of pulses and $n_t$, $n_r$, $n_\theta$, and $n_z$ represent the number of steps in time and spatial coordinates ($r$, $\theta$, $z$), respectively. Recording the heat values at all points in the crystal for all time steps requires an array of size $1000 \times 20{,}000 \times 100 \times 100 \times 100 = 2 \times 10^{15}$ elements. Assuming that each entry requires one byte of RAM, this would demand approximately $2{,}000{,}000\,\mathrm{GB}$ ($2\,\mathrm{PB}$) of RAM, which is impractical.
+
+
+Due to the symmetry of the source tail, heat is no longer a function of $\theta$, which reduces the array size by a factor of $100$: $(n_p=1000,\, n_t=20{,}000,\, n_r=100,\, n_z=100)$. The next step is to solve the program for the desired number of pulses; at the end of each pulse, the data are reported but not stored in RAM. As a result, the array size is reduced by a factor of $1000$, yielding an array with only two hundred million entries: $(n_t=20{,}000,\, n_r=100,\, n_z=100)$. To achieve this, the position at which the heat values are recorded must correspond to point (2) in Fig.~\ref{fig:1}.
+
+Although the array size has been significantly reduced, executing the code is still not feasible, and further optimization is required. Examining the heat function reveals that the majority of array entries correspond to time steps, suggesting that the key to optimization is to reduce the number of time steps without sacrificing accuracy. This can be illustrated by considering the heat array as a book of $2000$ pages, where each page represents one time step. On each page, $n_r \times n_z$ entries correspond to the heat values at different spatial points. To calculate the heat values at time step $t+1$, only the values from the previous time step $t$ are required. Thus, only two time steps are essential, i.e., $n_t=2$. In practice, the values at $t+1$ (the second page) are computed from those at $t$ (the first page); afterward, the second page is copied back into the first page, and the process repeats. This approach reduces the array size to $(n_t=2,\,n_r=100,\,n_z=100)$, i.e., only twenty thousand entries. The implementation of this technique is indicated at point (3) in Fig.~\ref{fig:1}.
+
+
+% figure 1
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width = 5 in ]{Figures/fig_1.png}
+    \caption{Schematic diagram showing three different positions for recording data in the optimization process. Position (1) records data after all loops end, position (2) records data at the end of each pulse, and position (3) records data using only two time steps.}
+    \label{fig:1}
+\end{figure}
+
+Tables~\ref{tab:1} and \ref{tab:2} show the number of elements of each quantity in the unoptimized and optimized codes, respectively. A significant reduction in the number of steps along the length dimension is evident. This reduction, however, does not compromise the accuracy of the results. The reason is that all calculations are performed step by step; therefore, in the length direction, only the information from the current and previous steps is retained, while the rest is discarded from storage. This technique effectively reduces the number of stored elements without any loss of accuracy.
+
+
+\begin{table}[!htbp]
+    \centering
+    \caption{The number of elements of each quantity in the unoptimized code}
+    \label{tab:1}\vskip .1in
+    \begin{tabular}{|c|c|c|c|c|c|}\hline
+        Row                                            & Quantity
+                                                       & \begin{tabular}{c}Number\\of steps\\toward\\length\\direction\end{tabular}
+                                                       & \begin{tabular}{c}Number\\of steps\\toward\\radius\\direction\end{tabular}
+                                                       & \begin{tabular}{c}Number\\of time\\steps\end{tabular}
+                                                       & \begin{tabular}{c}Number\\of\\elements\end{tabular}
+        \\ \hline
+                                                       &                                                                              & nz       & nr      & nt                  & nz.nr.nt            \\ \hline
+        1                                              & \begin{tabular}{c}Fundamental field in\\ordinary direction\end{tabular}
+                                                       & 12{,}000                                                                     & 120      & 2{,}532 & 3{,}646{,}080{,}000                       \\ \cline{1-6}
+        2                                              & \begin{tabular}{c}Fundamental field in\\extraordinary direction\end{tabular}
+                                                       & 12{,}000                                                                     & 120      & 2{,}532 & 3{,}646{,}080{,}000                       \\ \cline{1-6}
+        3                                              & \begin{tabular}{c}
+                                                             Secondary field in \\extraordinary direction
+                                                         \end{tabular}                                 & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000                                \\ \cline{1-6}
+        4                                              & Temperature                                                                  & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \cline{1-6}
+        5                                              & Thermal conductivity                                                         & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \cline{1-6}
+        6                                              & Phase mismatching                                                            & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \hline
+        \multicolumn{5}{|c|}{Total number of elements} & 21{,}876{,}480{,}000                                                                                                                          \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[!htbp]
+    \centering
+    \caption{The number of elements of each quantity in optimized code}
+    \label{tab:2}\vskip .1in
+    \begin{tabular}{|c|c|c|c|c|c|}\hline
+        Row                                            & Quantity
+                                                       & \begin{tabular}{c}Number\\of steps\\toward\\length\\direction\end{tabular}
+                                                       & \begin{tabular}{c}Number\\of steps\\toward\\radius\\direction\end{tabular}
+                                                       & \begin{tabular}{c}Number\\of time\\steps\end{tabular}
+                                                       & \begin{tabular}{c}Number\\of\\elements\end{tabular}
+        \\ \hline
+                                                       &                                                                                      & nz       & nr  & nt             & nz.nr.nt        \\ \hline
+        1                                              & \begin{tabular}{c}Fundamental field in\\ordinary direction (Psi1)\end{tabular}
+                                                       & 2                                                                                    & 120      & 81  & 19{,}440                         \\ \cline{1-6}
+        2                                              & \begin{tabular}{c}Fundamental field in\\extraordinary direction (Psi2)\end{tabular}
+                                                       & 2                                                                                    & 120      & 81  & 19{,}440                         \\ \cline{1-6}
+        3                                              & \begin{tabular}{c}
+                                                             Secondary field in \\extraordinary direction (Psi3)\end{tabular}
+                                                       & 2                                                                                    & 120      & 81  & 19{,}440                         \\ \cline{1-6}
+        4                                              & \begin{tabular}{c}Fundamental field in\\ordinary direction (Elec1)\end{tabular}
+                                                       & 2{,}400                                                                              & 120      & 81  & 23{,}328{,}000                   \\ \cline{1-6}
+        5                                              & \begin{tabular}{c}Fundamental field in\\extraordinary direction (Elec2)\end{tabular}
+                                                       & 2{,}400                                                                              & 120      & 81  & 23{,}328{,}000                   \\ \cline{1-6}
+        6                                              & \begin{tabular}{c}Secondary field in\\extraordinary direction (Elec3)\end{tabular}
+                                                       & 2{,}400                                                                              & 120      & 81  & 23{,}328{,}000                   \\ \cline{1-6}
+        7                                              & Temperature (Temp)                                                                   & 2{,}400  & 120 & 2              & 576{,}000       \\ \cline{1-6}
+        8                                              & \begin{tabular}{c}Thermal conductivity K(T)\end{tabular}
+                                                       & 2{,}400                                                                              & 120      & --  & 288{,}000                        \\ \hline
+        9                                              & Phase mismatching                                                                    & 12{,}000 & 120 & --             & 1{,}440{,}000   \\ \hline
+        10                                             & Phase change                                                                         & 12{,}000 & 120 & 81             & 116{,}640{,}000 \\ \hline
+        \multicolumn{5}{|c|}{Total number of elements} & 188{,}986{,}320                                                                                                                          \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{Reducing the number of loops}
+In the second step of optimization, unnecessary loops—including most of the $z$-loops in the heat equations and the $t$-loops in the field equations—are omitted to reduce the computational load. As mentioned earlier, these redundant loops arise from the stability condition. The key to overcoming this restriction is to separate the field-equation loops from the heat- and phase-equation loops into two distinct sets. With this approach, the field values are not required to be fully reported to the heat equation, and similarly, not all phase values need to be passed to the field equations at the start of each calculation step.
+
+This technique allows selective transfer of only a subset of the calculated data from one set of loops to another. Based on the initial conditions, a large number of field equations are solved and their values stored in memory; only a small fraction of these results is passed to the heat equation. Similarly, once the phase equation is solved and its results are stored, only limited values are reported back to the field equations. This selective exchange continues until all computations are completed.
+
+By reducing the number of elements, the number of unnecessary loops and calculations is also decreased; this is illustrated in Tables~\ref{tab:3} and \ref{tab:4} for the unoptimized and optimized codes, respectively. The comparison between the two tables demonstrates the improvement in the code execution time.
+
+At this point, the RAM usage and execution time of the code are reduced by $99\%$ and $86\%$, respectively. The final code can be executed on a personal computer with only $2\,\mathrm{GB}$ of RAM, requiring approximately $5.5$ hours for $50$ pulses. This improvement in execution time is especially significant in research contexts where the effects of $20$ energy values, $6$ spot sizes, $3$ pulse repetition frequencies, $16$ crystal lengths, and $2$ pulse durations must be investigated \cite{corless2018exploring_11}. In total, the code must therefore be executed $11{,}520$ times, requiring $63{,}360$ hours total, which is far more economical than the $441{,}417$ hours required for the unoptimized code.
+
+
+\begin{table}[!htbp]
+    \centering
+    \caption{The number of loops' iterations in the unoptimized code}
+    \label{tab:3}\vskip .1in
+    \begin{tabular}{|c|c|c|c|c|c|}\hline
+        Row & Quantity
+            & \begin{tabular}{c}Number\\of steps\\toward\\length\\direction\end{tabular}
+            & \begin{tabular}{c}Number\\of steps\\toward\\radius\\direction\end{tabular}
+            & \begin{tabular}{c}Number\\of time\\steps\end{tabular}
+            & \begin{tabular}{c}Number\\of\\iterations\end{tabular}
+        \\ \hline
+            &                                                                              & nz       & nr      & nt                  & nz.nr.nt            \\ \hline
+        1   & \begin{tabular}{c}Fundamental field in\\ordinary direction\end{tabular}
+            & 12{,}000                                                                     & 120      & 2{,}532 & 3{,}646{,}080{,}000                       \\ \cline{1-6}
+        2   & \begin{tabular}{c}Fundamental field in\\extraordinary direction\end{tabular}
+            & 12{,}000                                                                     & 120      & 2{,}532 & 3{,}646{,}080{,}000                       \\ \cline{1-6}
+        3   & \begin{tabular}{c}
+                  Secondary field in \\extraordinary direction\end{tabular}                    & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \cline{1-6}
+        4   & Temperature                                                                  & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \cline{1-6}
+        5   & Thermal conductivity                                                         & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \cline{1-6}
+        6   & Phase mismatching                                                            & 12{,}000 & 120     & 2{,}532             & 3{,}646{,}080{,}000 \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[!htbp]
+    \centering
+    \caption{The number of loops' iterations in the optimized code}
+    \label{tab:4}\vskip .1in
+    \begin{tabular}{|c|c|c|c|c|c|}\hline
+        Row & Quantity
+            & \begin{tabular}{c}Number\\of steps\\toward\\length\\direction\end{tabular}
+            & \begin{tabular}{c}Number\\of steps\\toward\\radius\\direction\end{tabular}
+            & \begin{tabular}{c}Number\\of time\\steps\end{tabular}
+            & \begin{tabular}{c}Number\\of\\iterations\end{tabular}
+        \\ \hline
+            &                                                                                      & nz       & nr  & nt              & nz.nr.nt        \\ \hline
+        1   & \begin{tabular}{c}Fundamental field in\\ordinary direction (Psi1)\end{tabular}
+            & 2{,}400                                                                              & 120      & 81  & 116{,}640{,}000                   \\ \cline{1-6}
+        2   & \begin{tabular}{c}Fundamental field in\\extraordinary direction (Psi2)\end{tabular}
+            & 2{,}400                                                                              & 120      & 81  & 116{,}640{,}000                   \\ \cline{1-6}
+        3   & \begin{tabular}{c}
+                  Secondary field in \\extraordinary direction (Psi3)\end{tabular}
+            & 2{,}400                                                                              & 120      & 81  & 116{,}640{,}000                   \\ \cline{1-6}
+        4   & \begin{tabular}{c}Fundamental field in\\ordinary direction (Elec1)\end{tabular}
+            & 2{,}400                                                                              & 120      & 81  & 116{,}640{,}000                   \\ \cline{1-6}
+        5   & \begin{tabular}{c}Fundamental field in\\extraordinary direction (Elec2)\end{tabular}
+            & 2{,}400                                                                              & 120      & 81  & 116{,}640{,}000                   \\ \cline{1-6}
+        6   & \begin{tabular}{c}Secondary field in\\extraordinary direction (Elec3)\end{tabular}
+            & 2{,}400                                                                              & 120      & 81  & 116{,}640{,}000                   \\ \cline{1-6}
+        7   & Temperature (Temp)                                                                   & 2{,}400  & 120 & 2               & 723{,}168{,}000 \\ \cline{1-6}
+        8   & \begin{tabular}{c}Thermal conductivity K(T)\end{tabular}
+            & 2{,}400                                                                              & 120      & --  & 723{,}168{,}000                   \\ \hline
+        9   & Phase mismatching                                                                    & 12{,}000 & 120 & --              & 723{,}168{,}000 \\ \hline
+        10  & Phase change                                                                         & 12{,}000 & 120 & 81              & 723{,}168{,}000 \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{Applying parallel computing}
+Although significant improvements have been achieved, the code still requires $63{,}360$ hours to complete all conditions and calculations. This motivates further optimization. The final step is the application of parallel computing—either task parallelism or data parallelism—to reduce execution time. Most real programs fall somewhere on a continuum between these two approaches \cite{pacheco2012introduction_18}. If the data used in a code are not inherently parallelizable, data parallelism cannot be applied. This is the case for our code, since its data is not distributed by nature. Moreover, the dependencies among the five coupled equations are such that even the use of task parallelism is nontrivial.
+
+As mentioned earlier, the code must be executed $11{,}520$ times in total. By applying task parallelism, these executions can be distributed among multiple processors so that the program does not have to be run sequentially $11{,}520$ times. For example, on a personal computer with eight cores, task parallelism reduces the number of executions per core to $1{,}440$, decreasing the total execution time by nearly a factor of eight. The broader significance of applying parallel computing is that it enables the use of supercomputers with thousands of CPU and GPU cores, thereby greatly accelerating both the calculations and the process of reporting data \cite{pacheco2012introduction_18,kirk2012programming_19}.
+
+In parallelizing our code, we employed the Message Passing Interface (MPI). This approach allowed us to exploit the full computational capability of a standard personal computer and adapt it for high-level academic applications.
+
+
+\section{Conclusion}
+In this work, we optimized a \textsc{FORTRAN}-based numerical code developed to investigate the effects of heat on pulsed second harmonic generation. The original implementation demanded $231.51\,\mathrm{GB}$ of RAM and $38.33$ hours for a single iteration, and had to be executed $11{,}520$ times under varying conditions, making practical use impossible. The prohibitive costs stemmed from large arrays and loops with extremely high iteration counts.
+
+Our optimization strategy was performed in three steps. First, the number of phase elements—and thus the required RAM—was reduced by a factor of ten million. Second, by separating the loops of the field equations from those of the heat and phase equations, the number of iterations decreased from $3{,}646{,}080{,}000$ to $116{,}640{,}000$ for field equations and $723{,}168{,}000$ for heat and phase equations, resulting in major reductions in memory usage and execution time. Finally, task parallelism using MPI was applied, distributing the workload across multiple cores and achieving further acceleration. As a result, RAM usage was reduced by $99\%$ and execution time by $86\%$. For $50$ pulses, the optimized code completed in $5.5$ hours on a standard personal computer with only $2\,\mathrm{GB}$ of RAM.
+
+The optimization strategies introduced here provide a general pathway for researchers to perform demanding simulations of nonlinear optical systems without requiring supercomputing resources. Our approach can be adapted to other problems in second harmonic generation and related fields by modifying the material and geometrical parameters, allowing researchers to build upon a robust framework rather than starting from scratch.
+
+Future efforts may focus on applying the optimized algorithm to different nonlinear crystals, exploring diverse operating conditions, and extending the framework to incorporate additional physical effects beyond those considered here. The combination of algorithmic optimization with advanced parallel computing environments such as GPU clusters presents a promising direction for handling even larger-scale problems. This work provides both a strong technical basis and motivation for future studies, enabling researchers to approach more complex scenarios with confidence and efficiency.
+
+
+% \section*{References}
+
+\bibliography{mybibfile}
+
+\end{document}

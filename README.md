@@ -79,46 +79,46 @@ The implementation has been validated by reproducing experimental data with exce
 
 ```
 Folder PATH listing
-+---citation                      <-- Reference documents and citations
-│       1_Heat-Equation_Continu…  <-- Heat equation analytical solution
-│       2_Heat-Equation_Continu…  <-- Heat equation continuous wave
-│       3_Heat-Equation_Pulsed-…  <-- Heat equation pulsed wave
-│       4_Phase-Mismatch_Pulsed…  <-- Phase mismatch analysis
-│       5_Ideal_Continuous-Wave…  <-- Ideal continuous wave study
-│       6_Ideal_Pulsed-Wave_Bes…  <-- Ideal pulsed wave Bessel
-│       7_Coupled_Continuous-Wa…  <-- Coupled continuous wave
-│       README.md                 <-- Citation documentation
++---citation                           <-- Contains research paper citations
+│       1_Heat-Equation_Continuo…      <-- Analytical heat equation paper
+│       2_Heat-Equation_Continuo…      <-- Heat equation paper
+│       3_Heat-Equation_Pulsed-Wa…     <-- Pulsed wave heat equation paper
+│       4_Phase-Mismatch_Pulsed-…      <-- Phase mismatch paper
+│       5_Ideal_Continuous-Wave_G…     <-- Ideal continuous wave paper
+│       6_Ideal_Pulsed-Wave_Besse…     <-- Ideal pulsed wave Bessel paper
+│       7_Coupled_Continuous-Wave…     <-- Coupled continuous wave paper
+│       README.md                      <-- Citation documentation
 │
-+---images                        <-- Visual assets and graphics
-│       SHG-banner.png            <-- Project banner image
++---images                             <-- Contains project images and graphics
+│       SHG-banner.png                 <-- Project banner image
 │
-+---results                       <-- Computational output data
-│       Psi_12_m_r.plt            <-- Psi field mode 12 minus radial
-│       Psi_12_m_z.plt            <-- Psi field mode 12 minus axial
-│       Psi_12_p_r.plt            <-- Psi field mode 12 plus radial
-│       Psi_12_p_z.plt            <-- Psi field mode 12 plus axial
-│       Psi_22_m_r.plt            <-- Psi field mode 22 minus radial
-│       Psi_22_m_z.plt            <-- Psi field mode 22 minus axial
-│       Psi_22_p_r.plt            <-- Psi field mode 22 plus radial
-│       Psi_22_p_z.plt            <-- Psi field mode 22 plus axial
-│       Psi_32_m_r.plt            <-- Psi field mode 32 minus radial
-│       Psi_32_m_z.plt            <-- Psi field mode 32 minus axial
-│       Psi_32_p_r.plt            <-- Psi field mode 32 plus radial
-│       Psi_32_p_z.plt            <-- Psi field mode 32 plus axial
-│       ST_85_time_01_p_r.plt     <-- ST time series pressure radial
-│       ST_85_time_01_p_t.plt     <-- ST time series pressure theta
-│       ST_85_time_01_p_z.plt     <-- ST time series pressure axial
-│       ST_85_time_01_T_r.plt     <-- ST time series temperature radial
-│       ST_85_time_01_T_t.plt     <-- ST time series temperature theta
-│       ST_85_time_01_T_z.plt     <-- ST time series temperature axial
++---results                            <-- Contains simulation output data files
+│       E045_f4000_Np1_tp50_Elec1…     <-- Electric field 12 radial data
+│       E045_f4000_Np1_tp50_Elec1…     <-- Electric field 12 theta data
+│       E045_f4000_Np1_tp50_Elec1…     <-- Electric field 12 z-axis data
+│       E045_f4000_Np1_tp50_Elec2…     <-- Electric field 22 radial data
+│       E045_f4000_Np1_tp50_Elec2…     <-- Electric field 22 theta data
+│       E045_f4000_Np1_tp50_Elec2…     <-- Electric field 22 z-axis data
+│       E045_f4000_Np1_tp50_Elec3…     <-- Electric field 32 radial data
+│       E045_f4000_Np1_tp50_Elec3…     <-- Electric field 32 theta data
+│       E045_f4000_Np1_tp50_Elec3…     <-- Electric field 32 z-axis data
+│       E045_f4000_Np1_tp50_ibest…     <-- Best intensity data
+│       E045_f4000_Np1_tp50_Phase…     <-- Minimum phase data
+│       E045_f4000_Np1_tp50_Pr.plt     <-- Power radial data
+│       E045_f4000_Np1_tp50_Psi2p…     <-- Psi2 picks data
+│       E045_f4000_Np1_tp50_Psi3p…     <-- Psi3 picks data
+│       E045_f4000_Np1_tp50_Pt.plt     <-- Power theta data
+│       E045_f4000_Np1_tp50_Pz.plt     <-- Power z-axis data
+│       E045_f4000_Np1_tp50_Temp…      <-- Maximum temperature data
+│       E045_f4000_Np1_tp50_Tr.plt     <-- Temperature radial data
+│       E045_f4000_Np1_tp50_Tt.plt     <-- Temperature theta data
+│       E045_f4000_Np1_tp50_Tz.plt     <-- Temperature z-axis data
 │
-+---src                           <-- Source code and implementation
-│       Code_SHG-CW-G-Coupled.…   <-- Main Fortran simulation code
++---src                                 <-- Contains source code files
+│       Code_SHG-PW-G-Optimizait…       <-- Main Fortran optimization code
 │
-│       Article_SHG-CW-G-Coupl…   <-- Main research article PDF
-│       CITATION.cff              <-- Citation metadata file
-│       LICENSE                   <-- Project license information
-│       README.md                 <-- Project documentation
+│       LICENSE                         <-- Project license file
+│       README.md                       <-- Project documentation
 ```
 
 ## 2. Getting Started
